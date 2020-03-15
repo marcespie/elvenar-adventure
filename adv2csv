@@ -1,0 +1,101 @@
+#! /usr/bin/perl
+
+# Copyright (c) 2020 Marc Espie <espie@openbsd.org>
+# 
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+
+use strict;
+use warnings;
+
+use WWW::Mechanize;
+use HTML::TreeBuilder;
+
+my $badges = {
+	'Dwarven Brewery' => 0,
+	'Treant Guild' => 1,
+	'Bakers Guild' => 2,
+	'Carpenters Guild' => 3,
+	'Farmers Delight' => 4,
+	'Blacksmith Guild' => 5,
+	'Luxurious Flacon' => 6,
+	'Golden Bracelet' => 7,
+	'Diamond Necklace' => 8,
+	'Elegant Statue' => 9,
+	'Wand' => 10,
+	'Magic Potion' => 11,
+	'Witch Hat' => 12,
+	'Wonder Society' => 13,
+	'Elvarian Guard' => 14,
+	'Sack of Coins' => 15,
+};
+
+my $url = shift // "https://elvengems.com/fellowship-adventures/march-2020-adventure/";
+
+my $mech = WWW::Mechanize->new;
+$mech->get($url);
+my $tree = HTML::TreeBuilder->new;
+$tree->parse($mech->content);
+$tree->eof;
+$tree->elementify;
+
+#$tree->dump;
+#for my $l ($tree->look_down('_tag', 'h3')) {
+#	print $l->as_text, "\n";
+#	for my $s ($l->content_list) {
+#		print $s->as_text, "\n";
+#	}
+#}
+
+sub parse_line
+{
+	my @td = @_;
+	my $header = shift @td;
+	my $t = $header->as_text;
+	if ($t eq 'Waypoint') {
+		return;
+	} else {
+		print $t, ":";
+	}
+	for my $p (@td) {
+		my $t = $p->as_text;
+		if ($t =~ m/.*00$/) {
+			next;
+		}
+		print $t, " ";
+	}
+	print "\n";
+}
+
+for my $l ($tree->look_down('_tag', 'table', 'class', qr{fa-stage-chart.*})) {
+	print "---------------------\n";
+	my @tr = $l->look_down('_tag', 'tr');
+	my @td = ();
+	while (@tr != 0) {
+		my $tr = shift @tr;
+		my @new = $tr->look_down('_tag', 'td');
+		if (@new == 0) {
+			if (@td == 0) {
+				next;
+			}
+			parse_line(@td);
+#			for my $td (@td) {
+#				print " ", $td->as_text;
+#			}
+#			print "\n";
+			@td = ();
+		} else {
+			push(@td, @new);
+		}
+	}
+}
