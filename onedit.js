@@ -32,11 +32,8 @@ function onEdit() {
         var ymin = range.getRow();
         var ymax = ymin + range.getHeight();
         if (col >= xmin && col < xmax && row >= ymin && row <= ymax) {
-	  // XXX this should actually compute the full location of the
-	  // cell so that both Stock and Prep update a single cell
-	  // so further row arithmetic, plus funny offset (haven't figured
-	  // absolute locations yet, and string references are clunky)
-          var cell = c.offset(0, xstamp-col);
+	  // find where we live in timestamp
+	  var cell = c.offset(ts_range.getRow()-ymin, xstamp-col);
           cell.setValue(new Date());
         }
       });
