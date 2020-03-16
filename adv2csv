@@ -41,6 +41,7 @@ my $badges = {
 	'bakers guild' => 2,
 	'carpenters guild' => 3,
 	'farmers delight' => 4,
+	'farmers guild' => 4,
 	'blacksmith guild' => 5,
 	'luxurious flacon' => 6,
 	'golden bracelet' => 7,
