@@ -20,6 +20,7 @@ use warnings;
 
 use WWW::Mechanize;
 use HTML::TreeBuilder;
+use Data::Dumper;
 
 my $badges = {
 	'Dwarven Brewery' => 0,
@@ -49,16 +50,9 @@ $tree->parse($mech->content);
 $tree->eof;
 $tree->elementify;
 
-#$tree->dump;
-#for my $l ($tree->look_down('_tag', 'h3')) {
-#	print $l->as_text, "\n";
-#	for my $s ($l->content_list) {
-#		print $s->as_text, "\n";
-#	}
-#}
-
 sub parse_line
 {
+	my $map = pop;
 	my @td = @_;
 	my $header = shift @td;
 	my $t = $header->as_text;
@@ -67,17 +61,36 @@ sub parse_line
 	} else {
 		print $t, ":";
 	}
+
+
+	# weed out unwanted parts and create clean array
+	my @parsed;
+
 	for my $p (@td) {
 		my $t = $p->as_text;
 		if ($t =~ m/.*00$/) {
 			next;
 		}
-		print $t, " ";
+		push(@parsed, $t);
 	}
+	my $points = [];
+	# lines are alternating: orange/blue/green
+	my $color = 0;
+	while (@parsed >= 2) {
+		my ($v, $k) = (shift @parsed, shift @parsed);
+		$points->[$color]{$k} = $v;
+		$color++;
+		if ($color == 3) {
+			$color = 0;
+		}
+	}
+	print Dumper($points);
 	print "\n";
 }
 
+my $map = 0;
 for my $l ($tree->look_down('_tag', 'table', 'class', qr{fa-stage-chart.*})) {
+	$map++;
 	print "---------------------\n";
 	my @tr = $l->look_down('_tag', 'tr');
 	my @td = ();
@@ -88,7 +101,7 @@ for my $l ($tree->look_down('_tag', 'table', 'class', qr{fa-stage-chart.*})) {
 			if (@td == 0) {
 				next;
 			}
-			parse_line(@td);
+			parse_line(@td, $map);
 #			for my $td (@td) {
 #				print " ", $td->as_text;
 #			}
