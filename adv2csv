@@ -20,50 +20,62 @@ use warnings;
 
 use WWW::Mechanize;
 use HTML::TreeBuilder;
-use Data::Dumper;
+
+sub get_tree
+{
+	my $url = shift;
+	my $mech = WWW::Mechanize->new;
+	$mech->get($url);
+	my $tree = HTML::TreeBuilder->new;
+	$tree->parse($mech->content);
+	$tree->eof;
+	$tree->elementify;
+	return $tree;
+}
 
 my $badges = {
-	'Dwarven Brewery' => 0,
-	'Treant Guild' => 1,
-	'Bakers Guild' => 2,
-	'Carpenters Guild' => 3,
-	'Farmers Delight' => 4,
-	'Blacksmith Guild' => 5,
-	'Luxurious Flacon' => 6,
-	'Golden Bracelet' => 7,
-	'Diamond Necklace' => 8,
-	'Elegant Statue' => 9,
-	'Wand' => 10,
-	'Magic Potion' => 11,
-	'Witch Hat' => 12,
-	'Wonder Society' => 13,
-	'Elvarian Guard' => 14,
-	'Sack of Coins' => 15,
+	'dwarven brewery' => 0,
+	'treant guild' => 1,
+	'bakers guild' => 2,
+	'carpenters guild' => 3,
+	'farmers delight' => 4,
+	'blacksmith guild' => 5,
+	'luxurious flacon' => 6,
+	'golden bracelet' => 7,
+	'diamond necklace' => 8,
+	'elegant statue' => 9,
+	'wand' => 10,
+	'magic potion' => 11,
+	'witch hat' => 12,
+	'wonder society' => 13,
+	'elvarian guard' => 14,
+	'sack of coins' => 15,
 };
 
-my $url = shift // "https://elvengems.com/fellowship-adventures/march-2020-adventure/";
+sub print_csv_line
+{
+	my ($bools, $points) = @_;
+	my @line;
+	for my $i (0..8) {
+		push(@line, $bools->[$i] // 0);
+	}
+	for my $j (0..15) {
+		push(@line, $points->{$j} // 0);
+	}
+	print join(', ', @line), "\n";
+}
 
-my $mech = WWW::Mechanize->new;
-$mech->get($url);
-my $tree = HTML::TreeBuilder->new;
-$tree->parse($mech->content);
-$tree->eof;
-$tree->elementify;
-
-sub parse_line
+sub parse_map_row
 {
 	my $map = pop;
 	my @td = @_;
 	my $header = shift @td;
 	my $t = $header->as_text;
-	if ($t eq 'Waypoint') {
+	if ($t eq 'Waypoint' or $t eq 'TOTAL') {
 		return;
-	} else {
-		print $t, ":";
-	}
+	} 
 
-
-	# weed out unwanted parts and create clean array
+	# weed out score total and create text array
 	my @parsed;
 
 	for my $p (@td) {
@@ -73,42 +85,70 @@ sub parse_line
 		}
 		push(@parsed, $t);
 	}
+
 	my $points = [];
-	# lines are alternating: orange/blue/green
+	# lines are alternating: orange/blue/green, with Qty/Type
 	my $color = 0;
 	while (@parsed >= 2) {
-		my ($v, $k) = (shift @parsed, shift @parsed);
-		$points->[$color]{$k} = $v;
+		my ($qty, $type) = (shift @parsed, shift @parsed);
+		$type =~ tr/A-Z/a-z/;
+		# some points DON'T have the same number of badges,
+		# that results in blank lines
+		if (defined $badges->{$type}) {
+			$points->[$color]{$badges->{$type}} = $qty;
+		}
 		$color++;
 		if ($color == 3) {
 			$color = 0;
 		}
 	}
-	print Dumper($points);
-	print "\n";
-}
-
-my $map = 0;
-for my $l ($tree->look_down('_tag', 'table', 'class', qr{fa-stage-chart.*})) {
-	$map++;
-	print "---------------------\n";
-	my @tr = $l->look_down('_tag', 'tr');
-	my @td = ();
-	while (@tr != 0) {
-		my $tr = shift @tr;
-		my @new = $tr->look_down('_tag', 'td');
-		if (@new == 0) {
-			if (@td == 0) {
-				next;
-			}
-			parse_line(@td, $map);
-#			for my $td (@td) {
-#				print " ", $td->as_text;
-#			}
-#			print "\n";
-			@td = ();
-		} else {
-			push(@td, @new);
+	# so we want an array with each path tagged with a bool
+	my $idx = $map * 3;
+	if ($t eq 'Start') {
+		# start points have 3* the same color, BUT it's the same point
+		my $bools = [];
+		$bools->[$idx] = $bools->[$idx+1] = $bools->[$idx+2] = 1;
+		print_csv_line($bools, $points->[0]);
+	} else {
+		for (my $i = 0; $i != 3; $i++) {
+			my $bools = [];
+			$bools->[$idx+$i] = 1;
+			print_csv_line($bools, $points->[$i]);
 		}
 	}
 }
+
+sub parse_tree
+{
+	my $tree = shift;
+
+	# extract the 3 maps, numbered
+	my $map = 0;
+	for my $l ($tree->look_down('_tag', 'table', 
+	    'class', qr{fa-stage-chart.*})) {
+		my @tr = $l->look_down('_tag', 'tr');
+		my @td = ();
+		while (@tr != 0) {
+			my $tr = shift @tr;
+			my @new = $tr->look_down('_tag', 'td');
+			if (@new == 0) {
+				if (@td == 0) {
+					next;
+				}
+				parse_map_row(@td, $map);
+				@td = ();
+			} else {
+				push(@td, @new);
+			}
+		}
+		$map++;
+	}
+}
+
+
+my $url = shift // "https://elvengems.com/fellowship-adventures/march-2020-adventure/";
+
+
+my $tree = get_tree($url);
+parse_tree($tree);
+
