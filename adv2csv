@@ -21,6 +21,8 @@ use warnings;
 use WWW::Mechanize;
 use HTML::TreeBuilder;
 
+my $exit = 0;
+
 sub get_tree
 {
 	my $url = shift;
@@ -69,21 +71,31 @@ sub print_csv_line
 	print join(',', @line), "\n";
 }
 
+# elvengems is somewhat inconsistent in its capitalization
+# so we convert everything to lc
+sub lc_text
+{
+	my $o = shift;
+	my $t = $o->as_text;
+	$t =~ tr/A-Z/a-z/;
+	return $t;
+}
+
 sub parse_map_row
 {
 	my $map = pop;
 	my @td = @_;
 	my $header = shift @td;
-	my $t = $header->as_text;
-	if ($t eq 'Waypoint' or $t eq 'TOTAL') {
+	my $t = lc_text($header);
+	if ($t eq 'waypoint' or $t eq 'total') {
 		return;
 	} 
 
-	# weed out score total and create text array
+	# weed out score totals and create text array
 	my @parsed;
 
 	for my $p (@td) {
-		my $t = $p->as_text;
+		my $t = lc_text($p);
 		if ($t =~ m/.*00$/) {
 			next;
 		}
@@ -95,11 +107,15 @@ sub parse_map_row
 	my $color = 0;
 	while (@parsed >= 2) {
 		my ($qty, $type) = (shift @parsed, shift @parsed);
-		$type =~ tr/A-Z/a-z/;
 		# some points DON'T have the same number of badges,
 		# that results in blank lines
 		if (defined $badges->{$type}) {
 			$points->[$color]{$badges->{$type}} = $qty;
+		} elsif ($type =~ m/^\s*$/) {
+			# that's an empty type
+		} else {
+			print STDERR "Unknown type $type\n";
+			$exit = 1;
 		}
 		$color++;
 		if ($color == 3) {
@@ -108,7 +124,7 @@ sub parse_map_row
 	}
 	# so we want an array with each path tagged with a bool
 	my $idx = $map * 3;
-	if ($t eq 'Start') {
+	if ($t eq 'start') {
 		# start points have 3* the same color, BUT it's the same point
 		my $bools = [];
 		$bools->[$idx] = $bools->[$idx+1] = $bools->[$idx+2] = 1;
@@ -155,4 +171,8 @@ my $url = shift // "https://elvengems.com/fellowship-adventures/march-2020-adven
 
 my $tree = get_tree($url);
 parse_tree($tree);
+if ($exit) {
+	print STDERR "Fatal: some errors encountered\n";
+	exit $exit;
+}
 
