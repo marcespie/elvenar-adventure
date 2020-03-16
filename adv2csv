@@ -22,6 +22,7 @@ use WWW::Mechanize;
 use HTML::TreeBuilder;
 
 my $exit = 0;
+my $debug = 0;
 
 sub get_tree
 {
@@ -87,10 +88,10 @@ sub parse_map_row
 	my $map = pop;
 	my @td = @_;
 	my $header = shift @td;
-	my $t = lc_text($header);
-	if ($t eq 'waypoint' or $t eq 'total') {
-		return;
-	} 
+	my $h = lc_text($header);
+#	if ($h =~ m/^way\-?point$/ or $h eq 'total') {
+#		return;
+#	} 
 
 	# weed out score totals and create text array
 	my @parsed;
@@ -115,7 +116,7 @@ sub parse_map_row
 		} elsif ($type =~ m/^\s*$/) {
 			# that's an empty type
 		} else {
-			print STDERR "Unknown type $type\n";
+			print STDERR "Unknown type in line $h: $type ($qty)\n";
 			$exit = 1;
 		}
 		$color++;
@@ -125,7 +126,8 @@ sub parse_map_row
 	}
 	# so we want an array with each path tagged with a bool
 	my $idx = $map * 3;
-	if ($t eq 'start') {
+	print "$h: " if $debug;
+	if ($h eq 'start') {
 		# start points have 3* the same color, BUT it's the same point
 		my $bools = [];
 		$bools->[$idx] = $bools->[$idx+1] = $bools->[$idx+2] = 1;
@@ -147,18 +149,26 @@ sub parse_tree
 	my $map = 0;
 	for my $l ($tree->look_down('_tag', 'table', 
 	    'class', qr{fa-stage-chart.*})) {
+	    	print "------------map #$map\n" if $debug;
 		my @tr = $l->look_down('_tag', 'tr');
 		my @td = ();
 		while (@tr != 0) {
 			my $tr = shift @tr;
+			print "---", $tr->as_text, "\n" if $debug;
 			my @new = $tr->look_down('_tag', 'td');
 			if (@new == 0) {
 				if (@td == 0) {
+					print "skip\n" if $debug;
 					next;
 				}
+				print "parsing\n" if $debug;
 				parse_map_row(@td, $map);
 				@td = ();
 			} else {
+				my $h = lc_text($new[0]);
+				if ($h =~ m/^(way\-?point|total|qty\.?)$/) {
+					next;
+				} 
 				push(@td, @new);
 			}
 		}
