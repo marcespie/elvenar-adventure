@@ -57,12 +57,16 @@ sub print_csv_line
 	my ($bools, $points) = @_;
 	my @line;
 	for my $i (0..8) {
-		push(@line, $bools->[$i] // 0);
+		if ($bools->[$i]) {
+			push(@line, "=TRUE");
+		} else {
+			push(@line, "=FALSE");
+		}
 	}
 	for my $j (0..15) {
-		push(@line, $points->{$j} // 0);
+		push(@line, $points->{$j} // '');
 	}
-	print join(', ', @line), "\n";
+	print join(',', @line), "\n";
 }
 
 sub parse_map_row
