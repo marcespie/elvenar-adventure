@@ -177,6 +177,7 @@ sub parse_tree
 			print $e;
 		}
 	}
+	print csv_line([], {});
 }
 
 
