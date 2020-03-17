@@ -16,7 +16,7 @@
 // This snippet will auto-fill "last changed" column based on named ranges
 function onEdit() {
   var s = SpreadsheetApp.getActiveSheet();
-  try { // if I'm not on the right sheet, no timestamp range!
+  if (s.getName() == "Aventure") {
     var ts_range = s.getRange("timestamp");
     var c = s.getActiveCell();
     var col = c.getColumn();
@@ -37,5 +37,5 @@ function onEdit() {
           cell.setValue(new Date());
         }
       });
-  } finally {}
+  }
 }
