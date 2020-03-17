@@ -68,7 +68,7 @@ sub print_csv_line
 		}
 	}
 	for my $j (0..15) {
-		push(@line, $points->{$j} // '');
+		push(@line, $points->{$j} // 0);
 	}
 	print join(',', @line), "\n";
 }
