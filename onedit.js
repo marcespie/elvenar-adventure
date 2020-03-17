@@ -14,28 +14,31 @@
 
 // I'm generally not a big fan of JavaScript.
 // This snippet will auto-fill "last changed" column based on named ranges
-function onEdit() {
+function onEdit(e) {
   var s = SpreadsheetApp.getActiveSheet();
-  if (s.getName() == "Aventure") {
-    var ts_range = s.getRange("timestamp");
+  var ts_range = s.getRange("timestamp"); // ranges belong to a given sheet
+  if (ts_range.getSheet().getName() == s.getName()) {
     var c = s.getActiveCell();
     var col = c.getColumn();
     var row = c.getRow();
     
     var names = ["Stock", "Preparation"];
+    // XXX we assume those ranges are on the same page!
     var xstamp = ts_range.getColumn();
-    names.forEach(
-      function(name) {
-        var range = s.getRange(name);
-        var xmin = range.getColumn();
-        var xmax = xmin + range.getWidth();
-        var ymin = range.getRow();
-        var ymax = ymin + range.getHeight();
-        if (col >= xmin && col < xmax && row >= ymin && row <= ymax) {
-	  // find where we live in timestamp
-	  var cell = c.offset(ts_range.getRow()-ymin, xstamp-col);
-          cell.setValue(new Date());
-        }
-      });
-  }
+      names.forEach(
+        function(name) {
+          var range = s.getRange(name);
+          var xmin = range.getColumn();
+          var xmax = xmin + range.getWidth();
+          var ymin = range.getRow();
+          var ymax = ymin + range.getHeight();
+          if (col >= xmin && col < xmax && row >= ymin && row <= ymax) {
+            // find where we live in timestamp
+            var cell = c.offset(ts_range.getRow()-ymin, xstamp-col);
+            cell.setValue(new Date());
+          }
+        });
+    }
+  
 }
+
