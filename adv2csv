@@ -56,7 +56,7 @@ my $badges = {
 	'sack of coins' => 15,
 };
 
-sub print_csv_line
+sub csv_line
 {
 	my ($bools, $points) = @_;
 	my @line;
@@ -70,7 +70,7 @@ sub print_csv_line
 	for my $j (0..15) {
 		push(@line, $points->{$j} // 0);
 	}
-	print join(',', @line), "\n";
+	return join(',', @line), "\n";
 }
 
 # elvengems is somewhat inconsistent in its capitalization
@@ -85,18 +85,14 @@ sub lc_text
 
 sub parse_map_row
 {
-	my $map = pop;
-	my @td = @_;
-	my $header = shift @td;
+	my ($td, $map, $list) = @_;
+	my $header = shift @$td;
 	my $h = lc_text($header);
-#	if ($h =~ m/^way\-?point$/ or $h eq 'total') {
-#		return;
-#	} 
 
 	# weed out score totals and create text array
 	my @parsed;
 
-	for my $p (@td) {
+	for my $p (@$td) {
 		my $t = lc_text($p);
 		if ($t =~ m/.*00$/) {
 			next;
@@ -131,12 +127,13 @@ sub parse_map_row
 		# start points have 3* the same color, BUT it's the same point
 		my $bools = [];
 		$bools->[$idx] = $bools->[$idx+1] = $bools->[$idx+2] = 1;
-		print_csv_line($bools, $points->[0]);
+		push(@{$list->[$idx]}, csv_line($bools, $points->[0]));
 	} else {
 		for (my $i = 0; $i != 3; $i++) {
 			my $bools = [];
 			$bools->[$idx+$i] = 1;
-			print_csv_line($bools, $points->[$i]);
+			push(@{$list->[$idx+$i]}, 
+			    csv_line($bools, $points->[$i]));
 		}
 	}
 }
@@ -147,6 +144,7 @@ sub parse_tree
 
 	# extract the 3 maps, numbered
 	my $map = 0;
+	my $output = [];
 	for my $l ($tree->look_down('_tag', 'table', 
 	    'class', qr{fa-stage-chart.*})) {
 	    	print "------------map #$map\n" if $debug;
@@ -162,7 +160,7 @@ sub parse_tree
 					next;
 				}
 				print "parsing\n" if $debug;
-				parse_map_row(@td, $map);
+				parse_map_row(\@td, $map, $output);
 				@td = ();
 			} else {
 				my $h = lc_text($new[0]);
@@ -173,6 +171,11 @@ sub parse_tree
 			}
 		}
 		$map++;
+	}
+	for my $o (@$output) {
+		for my $e (@$o) {
+			print $e;
+		}
 	}
 }
 
