@@ -122,7 +122,7 @@ sub parse_map_row
 	}
 	# so we want an array with each path tagged with a bool
 	my $idx = $map * 3;
-	print "$h: " if $debug;
+	print $h if $debug;
 	if ($h eq 'start') {
 		# start points have 3* the same color, BUT it's the same point
 		my $bools = [];
@@ -157,18 +157,26 @@ sub parse_tree
 			if (@new == 0) {
 				if (@td == 0) {
 					print "skip\n" if $debug;
-					next;
+				} else {
+					print "parsing " if $debug;
+					parse_map_row(\@td, $map, $output);
+					@td = ();
+					print "\n" if $debug;
 				}
-				print "parsing\n" if $debug;
-				parse_map_row(\@td, $map, $output);
-				@td = ();
 			} else {
 				my $h = lc_text($new[0]);
-				if ($h =~ m/^(way\-?point|total|qty\.?)$/) {
+				if ($h =~ m/^(way\-?point|total|qty\.?|badges:)$/) {
 					next;
 				} 
 				push(@td, @new);
 			}
+		}
+		if (@td == 0) {
+			print "skip\n" if $debug;
+		} else {
+			print "parsing " if $debug;
+			parse_map_row(\@td, $map, $output);
+			@td = ();
 		}
 		$map++;
 	}
